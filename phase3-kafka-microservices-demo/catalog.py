@@ -8,10 +8,21 @@ import os
 from pathlib import Path
 
 import pyarrow as pa
+from dotenv import load_dotenv
 from pyiceberg.catalog import load_catalog
 
-WAREHOUSE_PATH = str(Path(__file__).resolve().parent / "iceberg_warehouse")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+# Where the SQLite catalog.db lives (table name -> storage location pointers).
+# This is just local bookkeeping - the actual Parquet/metadata files below
+# live in S3_WAREHOUSE (MinIO for now, real S3 later).
+CATALOG_DB_DIR = str(Path(__file__).resolve().parent / "iceberg_warehouse")
 NAMESPACE = "shop"
+
+S3_WAREHOUSE = "s3://warehouse"
+S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://localhost:9002")
+S3_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
+S3_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 
 ORDERS_SCHEMA = pa.schema([
     ("order_id", pa.string()),
@@ -44,14 +55,18 @@ INVOICES_SCHEMA = pa.schema([
 
 
 def get_catalog():
-    """One local, SQLite-backed catalog shared by every service."""
-    os.makedirs(WAREHOUSE_PATH, exist_ok=True)
+    """SQLite catalog shared by every service - table data lives in S3 (MinIO locally)."""
+    os.makedirs(CATALOG_DB_DIR, exist_ok=True)
     return load_catalog(
         "shop_catalog",
         **{
             "type": "sql",
-            "uri": f"sqlite:///{WAREHOUSE_PATH}/catalog.db",
-            "warehouse": f"file://{WAREHOUSE_PATH}",
+            "uri": f"sqlite:///{CATALOG_DB_DIR}/catalog.db",
+            "warehouse": S3_WAREHOUSE,
+            "s3.endpoint": S3_ENDPOINT,
+            "s3.access-key-id": S3_ACCESS_KEY_ID,
+            "s3.secret-access-key": S3_SECRET_ACCESS_KEY,
+            "s3.path-style-access": "true",
         },
     )
 
