@@ -18,3 +18,7 @@ ENV/
 
 # Kafka / Docker
 kraft-combined-logs/
+
+warehouse/
+.ice/
+.vscode/

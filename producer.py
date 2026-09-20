@@ -1,9 +1,13 @@
 from confluent_kafka import Producer
 from uuid import uuid4
 from json import dumps
+from random import choice, randint, sample
 
 producer_config = {"bootstrap.servers": "localhost:9092"}
 producer = Producer(producer_config)
+
+NAMES = ["john", "emily", "michael", "sarah", "david", "jessica", "james", "laura", "daniel", "emma"]
+MENU = ["burger", "pizza", "fries", "soda", "salad", "coffee", "sandwich", "pasta", "cake", "smoothie"]
 
 
 def delivery_report(err, msg):
@@ -14,18 +18,22 @@ def delivery_report(err, msg):
             f"Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()} \n Message: {msg.value().decode('utf-8')}")
 
 
-order = {
-    "order_id": str(uuid4()),
-    "user": "ameelarara",
-    "order_date": "2023-06-01",
-    "items": "[{'item_id': 'lol', 'quantity': 10}]"
-}
+def random_items() -> list[dict]:
+    return [{"item_id": item, "quantity": randint(1, 5)} for item in sample(MENU, k=randint(1, 3))]
 
-value = dumps(order).encode('utf-8')
 
-# create a new order or appended if exists
-producer.produce(topic="orders", value=value, callback=delivery_report)
+def build_order() -> dict:
+    return {
+        "order_id": str(uuid4()),
+        "user": choice(NAMES),
+        "order_date": "2023-06-01",
+        "items": dumps(random_items()),
+    }
 
-# before exit, it pushes unsent events to the broker and waits for delivery reports. This is important to ensure that all messages are sent before the application exits.
-# best practice to get application to work cleanly, ensures all messages are sent before exiting
+
+for _ in range(10):
+    value = dumps(build_order()).encode("utf-8")
+    producer.produce(topic="orders", value=value, callback=delivery_report)
+
+# ensures all messages are delivered (or their callbacks fired) before the process exits
 producer.flush()
