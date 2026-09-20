@@ -3,3 +3,5 @@ boringcatalog==0.4.0
 pyiceberg==0.9.1
 pyarrow==25.0.1
 duckdb==1.5.5
+sqlalchemy==2.0.54
+pandas==3.0.6

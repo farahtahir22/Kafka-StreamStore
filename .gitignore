@@ -21,4 +21,5 @@ kraft-combined-logs/
 
 warehouse/
 .ice/
+iceberg_warehouse/
 .vscode/
